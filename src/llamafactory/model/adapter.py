@@ -254,12 +254,19 @@ def _setup_lora_tuning(
                     logger.info_rank0(f"Using PiSSA initialization with FSVD steps {finetuning_args.pissa_iter}.")
                     peft_kwargs["init_lora_weights"] = f"pissa_niter_{finetuning_args.pissa_iter}"
 
+            if finetuning_args.use_clora:
+                lora_config = CLoraConfig(
+                    task_type=TaskType.CAUSAL_LM,
+                    inference_mode=False,
+                    **peft_kwargs,
+                )
             # 初始化PeftModel
-            lora_config = LoraConfig(
-                task_type=TaskType.CAUSAL_LM,
-                inference_mode=False,
-                **peft_kwargs,
-            )
+            else:
+                lora_config = LoraConfig(
+                    task_type=TaskType.CAUSAL_LM,
+                    inference_mode=False,
+                    **peft_kwargs,
+                )
             model = get_peft_model(model, lora_config)
 
     if is_trainable and cast_trainable_params_to_fp32:
