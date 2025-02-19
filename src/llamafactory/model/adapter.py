@@ -1,4 +1,4 @@
-# Copyright 2024 the LlamaFactory team.
+# Copyright 2025 the LlamaFactory team.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -208,7 +208,7 @@ def _setup_lora_tuning(
         if finetuning_args.use_llama_pro:
             target_modules = find_expanded_modules(model, target_modules, finetuning_args.freeze_trainable_layers)
         # 修复lora-target 针对VLM的特殊处理
-        target_modules = patch_target_modules(model.config, finetuning_args, target_modules)
+        target_modules = patch_target_modules(model, finetuning_args, target_modules)
 
         # DoRA 不支持 PTQ-quantized models
         if (
