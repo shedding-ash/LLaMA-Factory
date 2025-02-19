@@ -87,6 +87,9 @@ def find_expanded_modules(model: "PreTrainedModel", target_modules: List[str], n
 
 
 def register_autoclass(config: "PretrainedConfig", model: "PreTrainedModel", tokenizer: "PreTrainedTokenizer"):
+    '''
+    register autoclass for model, tokenizer and config
+    '''
     if "AutoConfig" in getattr(config, "auto_map", {}):
         config.__class__.register_for_auto_class()
     if "AutoModelForCausalLM" in getattr(config, "auto_map", {}):

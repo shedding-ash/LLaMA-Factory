@@ -42,9 +42,18 @@ logger = logging.get_logger(__name__)
 
 
 check_dependencies()
-
-
-_TRAIN_ARGS = [ModelArguments, DataArguments, Seq2SeqTrainingArguments, FinetuningArguments, GeneratingArguments]
+from peft import CLoraConfig
+from dataclasses import dataclass, field
+@dataclass
+class CArguments(CLoraConfig):
+    # model configs
+    lora_rank1: Optional[str] = field(
+        default=8, metadata={"help": "rank1."}
+    )
+    lora_rank2: Optional[str] = field(
+        default=8, metadata={"help": "rank2."}
+    )
+_TRAIN_ARGS = [ModelArguments, DataArguments, Seq2SeqTrainingArguments, FinetuningArguments, GeneratingArguments,CArguments]
 _TRAIN_CLS = Tuple[ModelArguments, DataArguments, Seq2SeqTrainingArguments, FinetuningArguments, GeneratingArguments]
 _INFER_ARGS = [ModelArguments, DataArguments, FinetuningArguments, GeneratingArguments]
 _INFER_CLS = Tuple[ModelArguments, DataArguments, FinetuningArguments, GeneratingArguments]
@@ -143,7 +152,7 @@ def _check_extra_dependencies(
 
 
 def _parse_train_args(args: Optional[Dict[str, Any]] = None) -> _TRAIN_CLS:
-    parser = HfArgumentParser(_TRAIN_ARGS)
+    parser = HfArgumentParser(_TRAIN_ARGS, use_dash=False)
     return _parse_args(parser, args)
 
 

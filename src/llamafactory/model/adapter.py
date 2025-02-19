@@ -149,6 +149,7 @@ def _setup_lora_tuning(
 
     adapter_to_resume = None
 
+    # 如果指定了现存的adapter merge and resume adapter
     if model_args.adapter_name_or_path is not None:
         is_mergeable = True
         if getattr(model, "quantization_method", None):  # merge lora in quantized model is unstable
@@ -162,7 +163,8 @@ def _setup_lora_tuning(
         if model_args.use_unsloth:
             assert len(model_args.adapter_name_or_path) == 1, "Unsloth model only accepts a single adapter."
             is_mergeable = False
-
+        
+        # 如果是训练模式且不是新建 adapter 或者不可合并，则将最后一个 adapter 作为 resume adapter
         if (is_trainable and not finetuning_args.create_new_adapter) or (not is_mergeable):
             adapter_to_merge = model_args.adapter_name_or_path[:-1]
             adapter_to_resume = model_args.adapter_name_or_path[-1]
@@ -177,7 +179,10 @@ def _setup_lora_tuning(
             "token": model_args.hf_hub_token,
         }
 
-        for adapter in adapter_to_merge:
+        # adapter_to_merge和adapter_to_resume都是adapter_name_or_path的list
+        # adapter_to_merge是需要合并的adapter，adapter_to_resume是需要继续训练的adapter
+        # 皆为加载现有的adapter操作
+        for adapter in adapter_to_merge: # 将adapter_to_merge中的adapter合并到model中
             model: "LoraModel" = PeftModel.from_pretrained(model, adapter, **init_kwargs)
             model = model.merge_and_unload()
 
@@ -192,7 +197,9 @@ def _setup_lora_tuning(
 
         logger.info_rank0("Loaded adapter(s): {}".format(",".join(model_args.adapter_name_or_path)))
 
+    # 如果没有指定adapter_name_or_path，则新建adapter
     if is_trainable and adapter_to_resume is None:  # create new lora weights while training
+        # 获取lora——target
         if len(finetuning_args.lora_target) == 1 and finetuning_args.lora_target[0] == "all":
             target_modules = find_all_linear_modules(model, finetuning_args.freeze_vision_tower)
         else:
@@ -200,9 +207,10 @@ def _setup_lora_tuning(
 
         if finetuning_args.use_llama_pro:
             target_modules = find_expanded_modules(model, target_modules, finetuning_args.freeze_trainable_layers)
-
+        # 修复lora-target 针对VLM的特殊处理
         target_modules = patch_target_modules(model.config, finetuning_args, target_modules)
 
+        # DoRA 不支持 PTQ-quantized models
         if (
             finetuning_args.use_dora
             and getattr(model, "quantization_method", None) is not None
@@ -210,6 +218,8 @@ def _setup_lora_tuning(
         ):
             raise ValueError("DoRA is not compatible with PTQ-quantized models.")
 
+        # 在模型词汇表被调整大小（resize_vocab）且没有指定额外训练目标（additional_target）的情况下，
+        # 自动将输入和输出嵌入层（input_embeddings 和 output_embeddings）添加到训练目标中，并记录日志。
         if model_args.resize_vocab and finetuning_args.additional_target is None:
             input_embeddings = model.get_input_embeddings()
             output_embeddings = model.get_output_embeddings()
@@ -221,6 +231,7 @@ def _setup_lora_tuning(
             finetuning_args.additional_target = module_names
             logger.warning_rank0("Vocab has been resized, add {} to trainable params.".format(",".join(module_names)))
 
+        # PeftModel的初始化参数
         peft_kwargs = {
             "r": finetuning_args.lora_rank,
             "target_modules": target_modules,
@@ -234,6 +245,7 @@ def _setup_lora_tuning(
         if model_args.use_unsloth:
             model = get_unsloth_peft_model(model, model_args, peft_kwargs)
         else:
+            # pissa初始化
             if finetuning_args.pissa_init:
                 if finetuning_args.pissa_iter == -1:
                     logger.info_rank0("Using PiSSA initialization.")
@@ -242,6 +254,7 @@ def _setup_lora_tuning(
                     logger.info_rank0(f"Using PiSSA initialization with FSVD steps {finetuning_args.pissa_iter}.")
                     peft_kwargs["init_lora_weights"] = f"pissa_niter_{finetuning_args.pissa_iter}"
 
+            # 初始化PeftModel
             lora_config = LoraConfig(
                 task_type=TaskType.CAUSAL_LM,
                 inference_mode=False,
@@ -270,6 +283,7 @@ def init_adapter(
 
     Note that the trainable parameters must be cast to float32.
     """
+    # 量化模型只能用于 LoRA 调优
     if is_trainable and getattr(model, "quantization_method", None) is not None:
         if finetuning_args.finetuning_type != "lora":
             raise ValueError("Quantized models can only be used for the LoRA tuning.")
@@ -291,6 +305,7 @@ def init_adapter(
         logger.info_rank0("Upcasting trainable params to float32.")
         cast_trainable_params_to_fp32 = True
 
+    # setup fine-tuning method
     if finetuning_args.finetuning_type == "full":
         _setup_full_tuning(model, finetuning_args, is_trainable, cast_trainable_params_to_fp32)
     elif finetuning_args.finetuning_type == "freeze":

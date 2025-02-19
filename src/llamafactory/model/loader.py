@@ -95,6 +95,7 @@ def load_tokenizer(model_args: "ModelArguments") -> "TokenizerModule":
             model_args.resize_vocab = True
             logger.warning_rank0("New tokens have been added, changed `resize_vocab` to True.")
 
+    # 确保 tokenizer 的 _pad方法来自于 PreTrainedTokenizerBase
     patch_tokenizer(tokenizer)
     try:
         processor = AutoProcessor.from_pretrained(model_args.model_name_or_path, **init_kwargs)
@@ -136,6 +137,7 @@ def load_model(
 
     model = None
     lazy_load = False
+    # unsloth 相关逻辑 加载预训练模型
     if model_args.use_unsloth:
         if model_args.adapter_name_or_path is not None:
             lazy_load = True
@@ -166,8 +168,10 @@ def load_model(
         patch_model(model, tokenizer, model_args, is_trainable, add_valuehead)
         register_autoclass(config, model, tokenizer)
 
+    # adapter 相关逻辑
     model = init_adapter(config, model, model_args, finetuning_args, is_trainable)
 
+    # valuehead 相关逻辑
     if add_valuehead:
         model = AutoModelForCausalLMWithValueHead.from_pretrained(model)
         patch_valuehead_model(model)
@@ -181,7 +185,8 @@ def load_model(
         if vhead_params is not None:
             model.load_state_dict(vhead_params, strict=False)
             logger.info_rank0(f"Loaded valuehead from checkpoint: {vhead_path}")
-
+    
+    # eval or train
     if not is_trainable:
         model.requires_grad_(False)
         for param in model.parameters():
@@ -191,7 +196,8 @@ def load_model(
         model.eval()
     else:
         model.train()
-
+    
+    # 参数统计
     trainable_params, all_param = count_parameters(model)
     if is_trainable:
         param_stats = "trainable params: {:,} || all params: {:,} || trainable%: {:.4f}".format(
@@ -202,6 +208,7 @@ def load_model(
 
     logger.info_rank0(param_stats)
 
+    # 打印参数状态
     if model_args.print_param_status:
         for name, param in model.named_parameters():
             print(

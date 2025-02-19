@@ -137,6 +137,14 @@ def patch_model(
     is_trainable: bool,
     add_valuehead: bool,
 ) -> None:
+    '''
+    Patch the model with the following features:
+    1. Resize the embedding layer if necessary.
+    2. Prepare the model for training.
+    3. Autocast the projector dtype.
+    4. Add the Z3 leaf module.
+    5. Print the attention implementation.
+    '''
     gen_config = model.generation_config  # check and fix generation config
     if not gen_config.do_sample and (
         (gen_config.temperature is not None and gen_config.temperature != 1.0)
