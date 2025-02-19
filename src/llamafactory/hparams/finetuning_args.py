@@ -59,6 +59,10 @@ class LoraArguments:
     r"""
     Arguments pertaining to the LoRA training.
     """
+    use_clora: bool = field(
+        default=False,
+        metadata={"help": "whether use clora."},
+    )
     lora_rank1: int = field(
         default=8,
         metadata={"help": "clora rank1."},
