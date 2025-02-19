@@ -59,7 +59,14 @@ class LoraArguments:
     r"""
     Arguments pertaining to the LoRA training.
     """
-
+    lora_rank1: int = field(
+        default=8,
+        metadata={"help": "clora rank1."},
+    )
+    lora_rank2: int = field(
+        default=8,
+        metadata={"help": "clora rank2."},
+    )
     additional_target: Optional[str] = field(
         default=None,
         metadata={
