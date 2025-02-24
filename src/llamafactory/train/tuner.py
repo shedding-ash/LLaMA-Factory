@@ -117,6 +117,7 @@ def export_model(args: Optional[Dict[str, Any]] = None) -> None:
     if getattr(model, "quantization_method", None) is not None:  # quantized model adopts float16 type
         setattr(model.config, "torch_dtype", torch.float16)
     else:
+        # 切换模型的精度
         if model_args.infer_dtype == "auto":
             output_dtype = getattr(model.config, "torch_dtype", torch.float32)
             if output_dtype == torch.float32:  # if infer_dtype is auto, try using half precision first
@@ -133,6 +134,7 @@ def export_model(args: Optional[Dict[str, Any]] = None) -> None:
         max_shard_size=f"{model_args.export_size}GB",
         safe_serialization=(not model_args.export_legacy_format),
     )
+    # 上传模型到hub
     if model_args.export_hub_model_id is not None:
         model.push_to_hub(
             model_args.export_hub_model_id,

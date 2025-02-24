@@ -188,7 +188,12 @@ def _setup_lora_tuning(
         # adapter_to_merge是需要合并的adapter，adapter_to_resume是需要继续训练的adapter
         # 皆为加载现有的adapter操作
         for adapter in adapter_to_merge: # 将adapter_to_merge中的adapter合并到model中
-            model: "LoraModel" = PeftModel.from_pretrained(model, adapter, **init_kwargs)
+            if finetuning_args.use_clora:
+                logger.info_rank0(f"Use clora for merge.lsz123")
+                init_kwargs["peft_type"] = "CLORA"
+                model = PeftModel.from_pretrained(model, adapter, **init_kwargs)
+            else:
+                model: "LoraModel" = PeftModel.from_pretrained(model, adapter, **init_kwargs)
             model = model.merge_and_unload()
 
         if len(adapter_to_merge) > 0:
