@@ -16,7 +16,7 @@ import re
 from typing import TYPE_CHECKING
 
 import torch
-from peft import LoraConfig, LoraModel, CloraConfig, PeftModel, TaskType, get_peft_model
+from peft import LoraConfig, LoraModel, CLoraConfig, PeftModel, TaskType, get_peft_model
 from transformers.integrations import is_deepspeed_zero3_enabled
 from transformers.modeling_utils import is_fsdp_enabled
 
@@ -145,7 +145,12 @@ def _setup_lora_tuning(
     cast_trainable_params_to_fp32: bool,
 ) -> "PeftModel":
     if is_trainable:
-        logger.info_rank0("Fine-tuning method: {}".format("DoRA" if finetuning_args.use_dora else "LoRA"))
+        method = "LoRA"
+        if finetuning_args.use_dora:
+            method = "DoRA" 
+        elif finetuning_args.use_clora:
+            method = "CLoRA"
+        logger.info_rank0("Fine-tuning method: {}".format(method))
 
     adapter_to_resume = None
 
@@ -256,6 +261,8 @@ def _setup_lora_tuning(
 
             if finetuning_args.use_clora:
                 lora_config = CLoraConfig(
+                    r1 = finetuning_args.lora_rank1,
+                    r2 = finetuning_args.lora_rank2,
                     task_type=TaskType.CAUSAL_LM,
                     inference_mode=False,
                     **peft_kwargs,
