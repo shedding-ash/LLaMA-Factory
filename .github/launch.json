@@ -1,0 +1,22 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug cli.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/LLaMA-Factory/src/llamafactory/cli.py",
+            "args": [
+                "train",
+                "/home/liushizhuo/github/myfact/LLaMA-Factory/my.yaml"
+            ],
+            "cwd": "${workspaceFolder}/LLaMA-Factory",  // 设置当前工作目录
+            "env": {
+                "PYTHONPATH": "$${workspaceFolder}/LLaMA-Factory",
+                "DISABLE_VERSION_CHECK":"1",
+                "CUDA_VISIBLE_DEVICES":"1",
+            },
+            "console": "integratedTerminal",
+        }
+    ]
+}
